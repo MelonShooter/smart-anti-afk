@@ -4,36 +4,29 @@
 
 SmartAntiAFK = SmartAntiAFK or {}
 
-SmartAntiAFK = SmartAntiAFK or {}
+SmartAntiAFK.Config = SmartAntiAFK.Config or {}
 
 --Don't touch anything above this
 
 
 
 
-SmartAntiAFK.AntiAFKTimerTime = 300
-SmartAntiAFK.AFKMessage = "Come back to us please. (AFK)"
+SmartAntiAFK.Config.AntiAFKTimerTime = 300
+SmartAntiAFK.Config.AFKMessage = "Come back to us please. (AFK)"
 
-SmartAntiAFK.Enable = {
-	"UTime" = {
-		enable = true,
-		observeInheritance = true,
-		blackListOrWhiteList = "blacklist",
-		list = {
+SmartAntiAFK.Config.Enable = {
+	["UTime"] = {
+		time = 0, --how much time after player notified as afk will utime pause
+		enable = true, --enable utime pausing
+		observeInheritance = true, --observe inheritance
+		blackListOrWhiteList = "blacklist", --blacklist or whitelist
+		list = { --list of teams/usergroups to be blacklisted/whitelisted
 
 		}
 	},
 
-	"DarkRP" = {
-		enable = true,
-		observeInheritance = true,
-		blackListOrWhiteList = "blacklist",
-		list = {
-			
-		}
-	},
-
-	"Kick" = {
+	["DarkRP"] = {
+		time = 0,
 		enable = true,
 		observeInheritance = true,
 		blackListOrWhiteList = "blacklist",
@@ -42,7 +35,18 @@ SmartAntiAFK.Enable = {
 		}
 	},
 
-	"Ghost" = {
+	["Kick"] = {
+		time = 0,
+		enable = true,
+		observeInheritance = true,
+		blackListOrWhiteList = "blacklist",
+		list = {
+			
+		}
+	},
+
+	["Ghost"] = {
+		time = 0,
 		enable = true,
 		observeInheritance = true,
 		blackListOrWhiteList = "blacklist",
@@ -55,4 +59,4 @@ SmartAntiAFK.Enable = {
 
 
 
-//add customizeable AFK message theme, have default theme, but list colors below
+--add customizeable AFK message theme, have default theme, but list colors below
