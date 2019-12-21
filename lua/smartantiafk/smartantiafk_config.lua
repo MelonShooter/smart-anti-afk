@@ -14,50 +14,42 @@ SmartAntiAFK = SmartAntiAFK or {}
 SmartAntiAFK.AntiAFKTimerTime = 300
 SmartAntiAFK.AFKMessage = "Come back to us please. (AFK)"
 
+SmartAntiAFK.Enable = {
+	"UTime" = {
+		enable = true,
+		observeInheritance = true,
+		blackListOrWhiteList = "blacklist",
+		list = {
 
+		}
+	},
 
+	"DarkRP" = {
+		enable = true,
+		observeInheritance = true,
+		blackListOrWhiteList = "blacklist",
+		list = {
+			
+		}
+	},
 
-SmartAntiAFK.EnableUTimeStop = true
+	"Kick" = {
+		enable = true,
+		observeInheritance = true,
+		blackListOrWhiteList = "blacklist",
+		list = {
+			
+		}
+	},
 
-SmartAntiAFK.UTimeStopObserveInheritance = true
-
-SmartAntiAFK.UTimeStopList = {
-	"blacklist",
-}
-
-
-
-
-SmartAntiAFK.EnableDarkRPSalaryStop = true
-
-SmartAntiAFK.SalaryStopObserveInheritance = true
-
-SmartAntiAFK.SalaryStopList = {
-	"blacklist",
-}
-
-
-
-
-SmartAntiAFK.EnableAFKKicking = true
-
-SmartAntiAFK.KickPercentage = 100
-
-SmartAntiAFK.KickObserveInheritance = true
-
-SmartAntiAFK.KickList = {
-	"blacklist",
-}
-
-
-
-
-SmartAntiAFK.EnableAFKGhosting = false
-
-SmartAntiAFK.GhostObserveInheritance = true
-
-SmartAntiAFK.GhostList = {
-	"blacklist",
+	"Ghost" = {
+		enable = true,
+		observeInheritance = true,
+		blackListOrWhiteList = "blacklist",
+		list = {
+			
+		}
+	}
 }
 
 

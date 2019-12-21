@@ -4,6 +4,7 @@ if not UTime then return end
 --GetUTimeStart() = the CurTime upon joining
 --CurTime() - self:GetUTimeStart() = session time
 --self:GetUTime() + CurTime() - self:GetUTimeStart() = total time
+--take into account if they aren't afk and have no SmartAntiAFKUTimePauseTime
 local meta = FindMetaTable("Player")
 
 function meta:GetUTimeTotalTime()
