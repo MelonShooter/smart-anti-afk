@@ -11,7 +11,7 @@ SmartAntiAFK.Config = SmartAntiAFK.Config or {}
 
 
 
-SmartAntiAFK.Config.AntiAFKTimerTime = 300
+SmartAntiAFK.Config.AntiAFKTimerTime = 5
 SmartAntiAFK.Config.AFKMessage = "Come back to us please. (AFK)"
 
 SmartAntiAFK.Config.Enable = {

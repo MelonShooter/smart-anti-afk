@@ -44,9 +44,19 @@ function plyMetatable:StartSmartAntiAFK()
 end
 
 --[[
+Starts AFK timer.
+]]
+
+local function startAFKTimer(ply)
+	timer.Create("SmartAntiAFK_AntiAFK" .. ply:UserID(), SmartAntiAFK.Config.AntiAFKTimerTime, 1, function()
+		ply:StartSmartAntiAFK()
+	end)
+end
+
+--[[
 Deregisters player as AFK with the server only if they were AFK to begin with.
 If UTime is used and the config allows it, it will unpause UTime for the player. 
-If DarkRP is used and the config allows it, it will unpause salaries for the player
+If DarkRP is used and the config allows it, it will unpause salaries for the player.
 Gets rid of the notification on the client
 ]]
 
@@ -66,15 +76,18 @@ function plyMetatable:EndSmartAntiAFK()
 
 	net.Start("SendAFKMessage")
 	net.Send(self) --Remove the notification to the player that they've been marked ask AFK
+
+	startAFKTimer(self) --Restart AFK timer
 end
 
 --[[
-Detects if player is AFK. Returns true if they are. 
+Detects if player is AFK.
+Returns true if they are.
 Returns false if they are not.
 ]]
 
 function plyMetatable:IsSmartAntiAFK()
-	return IsValid(antiAFKPlayers[self:SteamID()])
+	return isnumber(antiAFKPlayers[self:SteamID()])
 end
 
 --[[
@@ -86,6 +99,34 @@ function plyMetatable:AFKTime()
 	return IsValid(antiAFKPlayers[self:SteamID()]) and CurTime() - antiAFKPlayers[self:SteamID()] or 0
 end
 
-hook.Add("PlayerDisconnected", "SmartAntiAFK_UnAFKOnDisconnect", function(ply)
-	ply:EndSmartAntiAFK()
-end)
+--[[
+Resets AFK timer or unAFKs the player if they are AFK
+]]
+
+local function resetAFKTimerOrUnAFKPlayer(ply)
+	if ply:IsSmartAntiAFK() then --If the player is AFK, make them unAFK
+		ply:EndSmartAntiAFK()
+	else --If they aren't AFK, reset their timer
+		timer.Adjust("SmartAntiAFK_AntiAFK" .. ply:UserID(), SmartAntiAFK.Config.AntiAFKTimerTime, 1,  function()
+			ply:StartSmartAntiAFK()
+		end)
+	end
+end
+
+--[[
+Get rid of any AFK timers and deregister player as AFK with the server if they are AFK
+]]
+
+local function cleanUpAntiAFK(ply)
+	if ply:IsSmartAntiAFK() then
+		ply:EndSmartAntiAFK()
+	end
+
+	timer.Remove("SmartAntiAFK_AntiAFK" .. ply:UserID())
+end
+
+hook.Add("PlayerInitialSpawn", "SmartAntiAFK_StartAFKTimer", startAFKTimer)
+
+hook.Add("PlayerButtonDown", "SmartAntiAFK_UnAFKOnKeyPress", resetAFKTimerOrUnAFKPlayer)
+
+hook.Add("PlayerDisconnected", "SmartAntiAFK_UnAFKOnDisconnect", cleanUpAntiAFK)

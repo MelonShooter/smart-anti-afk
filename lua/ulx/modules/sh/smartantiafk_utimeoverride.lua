@@ -32,7 +32,7 @@ function updateAll()
 	local players = player.GetAll()
 
 	for _, ply in ipairs(players) do
-		if ply and ply:IsConnected() and not ply:IsAFK() then
+		if ply and ply:IsConnected() and not ply:IsSmartAntiAFK() then
 			updatePlayer(ply)
 		end
 	end
