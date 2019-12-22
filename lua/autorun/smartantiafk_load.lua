@@ -1,9 +1,9 @@
 if CLIENT then
-	AddCSLuaFile("smartantiafk/client/cl_smartantiafk.lua")
-	AddCSLuaFile("smartantiafk/smartantiafk_config.lua")
 	include("smartantiafk/client/cl_smartantiafk.lua")
 end
 
+AddCSLuaFile("smartantiafk/client/cl_smartantiafk.lua")
+AddCSLuaFile("smartantiafk/smartantiafk_config.lua")
 include("smartantiafk/smartantiafk_config.lua")
 
 if SERVER then

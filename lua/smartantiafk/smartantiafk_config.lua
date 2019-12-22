@@ -12,7 +12,26 @@ SmartAntiAFK.Config = SmartAntiAFK.Config or {}
 
 
 SmartAntiAFK.Config.AntiAFKTimerTime = 5
+
+
+
+
+SmartAntiAFK.Config.AntiAFKDetectKeyDown = true
+SmartAntiAFK.Config.AntiAFKDetectKeyHold = true
+SmartAntiAFK.Config.AntiAFKDetectKeyUp = true
+SmartAntiAFK.Config.AntiAFKDetectMouseMove = true
+
+
+
+SmartAntiAFK.Config.AntiAFKKeyHoldTimeOut = 5 --The amount of time before a held-down key no longer resets the anti AFK timer. The anti AFK timer will start counting down 
+
+
+
+
 SmartAntiAFK.Config.AFKMessage = "Come back to us please. (AFK)"
+
+
+
 
 SmartAntiAFK.Config.Enable = {
 	["UTime"] = {
