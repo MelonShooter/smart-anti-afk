@@ -10,7 +10,7 @@ SmartAntiAFK.Config = SmartAntiAFK.Config or {}
 
 
 
-
+SmartAntiAFK.Config.AntiAFKTimeOffset = 5
 SmartAntiAFK.Config.AntiAFKTimerTime = 5
 
 
@@ -20,6 +20,7 @@ SmartAntiAFK.Config.AntiAFKDetectKeyDown = true
 SmartAntiAFK.Config.AntiAFKDetectKeyHold = true
 SmartAntiAFK.Config.AntiAFKDetectKeyUp = true
 SmartAntiAFK.Config.AntiAFKDetectMouseMove = true
+SmartAntiAFK.Config.AntiAFKDetectScrolling = true
 
 
 
@@ -67,6 +68,16 @@ SmartAntiAFK.Config.Enable = {
 	["Ghost"] = {
 		time = 0,
 		enable = true,
+		observeInheritance = true,
+		blackListOrWhiteList = "blacklist",
+		list = {
+			
+		}
+	},
+
+	["God"] = {
+		time = 0,
+		enable = false,
 		observeInheritance = true,
 		blackListOrWhiteList = "blacklist",
 		list = {

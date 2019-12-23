@@ -30,8 +30,28 @@ local function HSL(h, s, l)
 end
 
 local function AFKMenu()
-	if hook.GetTable()["HUDPaint"]["AntiAFKDrawAFK"] then
+	if IsValid(SmartAntiAFK.AntiAFKPanel) and hook.GetTable()["HUDPaint"]["AntiAFKDrawAFK"] then
+		SmartAntiAFK.AntiAFKPanel:Remove()
 		hook.Remove("HUDPaint", "AntiAFKDrawAFK")
+		return
+	elseif IsValid(SmartAntiAFK.AntiAFKPanel) then
+		SmartAntiAFK.AntiAFKPanel:Remove()
+		return
+	elseif hook.GetTable()["HUDPaint"]["AntiAFKDrawAFK"] then
+		hook.Remove("HUDPaint", "AntiAFKDrawAFK")
+		return
+	end
+
+	if vgui.GetKeyboardFocus() or gui.IsGameUIVisible() or gui.IsConsoleVisible() then --If they're in a GUI with keyboard focus or main/escape menu
+		SmartAntiAFK.AntiAFKPanel = vgui.Create("DPanel") --the server can't detect the keys the client is pressing or mouse movements, only the mouse clicks, so this creates a manual popup.
+		SmartAntiAFK.AntiAFKPanel:SetSize(200, 200)
+		SmartAntiAFK.AntiAFKPanel:MakePopup()
+
+		SmartAntiAFK.AntiAFKButton = vgui.Create("DButton", SmartAntiAFK.AntiAFKPanel)
+		SmartAntiAFK.AntiAFKButton:SetSize(100, 100)
+		SmartAntiAFK.AntiAFKButton.DoClick = function()
+			SmartAntiAFK.AntiAFKPanel:Remove()
+		end
 
 		return
 	end

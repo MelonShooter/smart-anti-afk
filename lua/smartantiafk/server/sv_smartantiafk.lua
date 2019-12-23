@@ -3,27 +3,15 @@ util.AddNetworkString("SendAFKMessage")
 local plyMetatable = FindMetaTable("Player")
 SmartAntiAFK.AntiAFKPlayers = SmartAntiAFK.AntiAFKPlayers or {}
 
-
-
---doesn't detect mouse movement in GUIs
-
-
-
 --[[
 TODO:
-use table to kick, ghost, and/or stop salary of player, if necessary (make sure it can parse both roles and usergroups)
-finish dev API
 add salary stop implementation
+use table to kick, ghost, and/or stop salary of player, god, if necessary (make sure it can parse both roles and usergroups)
+finish dev API (see freedcamp)
+see if there's another fix to the keyboard focus issue
+anti-macro (see freedcamp)
+look at freedcamp
 ]]
-
---add timer to make player afk after it
---use table to kick, ghost, and/or stop salary of player (make sure it can parse both roles and usergroups)
---need to mark as unAFK on disconnect
---need function to end AFK and mark as not AFK anymore
---need a function to start AFK to pause UTime and mark as AFK, set nwint SmartAntiAFKUTimePauseTime, make salary stop
---need table of player identity (steamID) as key and time AFK, remove key if not AFK
---need a function to check if AFK
---need function checking how long afk
 
 --[[
 Registers player as AFK with the server only if they weren't AFK to begin with.
@@ -46,7 +34,7 @@ function plyMetatable:StartSmartAntiAFK()
 	end
 
 	if DarkRP and SmartAntiAFK.Config.Enable["DarkRP"].enable then
-
+		self.SmartAntiAFKSalaryStop = true
 	end
 
 	net.Start("SendAFKMessage")
@@ -83,7 +71,7 @@ function plyMetatable:EndSmartAntiAFK()
 	end
 
 	if DarkRP and SmartAntiAFK.Config.Enable["DarkRP"].enable then
-
+		self.SmartAntiAFKSalaryStop = nil
 	end
 
 	net.Start("SendAFKMessage")
@@ -99,7 +87,8 @@ Returns false if they are not.
 ]]
 
 function plyMetatable:IsSmartAntiAFK()
-	return SmartAntiAFK.AntiAFKPlayers[self:SteamID()] and isnumber(SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time)
+	local playerAFKTable = SmartAntiAFK.AntiAFKPlayers[self:SteamID()]
+	return playerAFKTable and isnumber(playerAFKTable.time)
 end
 
 --[[
@@ -116,10 +105,13 @@ Resets AFK timer or unAFKs the player if they are AFK
 ]]
 
 local function resetAFKTimerOrUnAFKPlayer(ply)
+	local timerIdentifier = "SmartAntiAFK_AntiAFK" .. ply:UserID()
 	if ply:IsSmartAntiAFK() then --If the player is AFK, make them unAFK
 		ply:EndSmartAntiAFK()
-	else --If they aren't AFK, reset their timer
-		timer.Adjust("SmartAntiAFK_AntiAFK" .. ply:UserID(), SmartAntiAFK.Config.AntiAFKTimerTime, 1,  function()
+	elseif timer.Exists(timerIdentifier) then --If they aren't AFK and the timer exists, reset their timer
+		timer.Adjust(timerIdentifier, SmartAntiAFK.Config.AntiAFKTimerTime, 1,  function()
+			if not IsValid(ply) then return end
+
 			ply:StartSmartAntiAFK()
 		end)
 	end
@@ -130,7 +122,9 @@ If enabled, Resets AFK timer or unAFKs the player if they are AFK upon a key bei
 ]]
 
 local function resetAFKTimerOrUnAFKPlayerKeyDown(ply, key)
-	resetAFKTimerOrUnAFKPlayer(ply)
+	if SmartAntiAFK.Config.AntiAFKDetectKeyDown then
+		resetAFKTimerOrUnAFKPlayer(ply)
+	end
 
 	if not SmartAntiAFK.Config.AntiAFKDetectKeyHold then return end
 
@@ -145,6 +139,8 @@ local function resetAFKTimerOrUnAFKPlayerKeyDown(ply, key)
 	SmartAntiAFK.AntiAFKPlayers[ply:SteamID()].keysDown[key] = true
 
 	timer.Simple(SmartAntiAFK.Config.AntiAFKKeyHoldTimeOut, function()
+		if not IsValid(ply) then return end
+
 		SmartAntiAFK.AntiAFKPlayers[ply:SteamID()].keysDown[key] = nil
 	end)
 end
@@ -158,7 +154,7 @@ local function resetAFKTimerOrUnAFKPlayerKeyUp(ply, key)
 		resetAFKTimerOrUnAFKPlayer(ply)
 	end
 
-	if not SmartAntiAFK.Config.AntiAFKDetectKeyHold then return end
+	if not SmartAntiAFK.Config.AntiAFKDetectKeyHold or not SmartAntiAFK.AntiAFKPlayers[ply:SteamID()] or not SmartAntiAFK.AntiAFKPlayers[ply:SteamID()].keysDown then return end
 
 	SmartAntiAFK.AntiAFKPlayers[ply:SteamID()].keysDown[key] = nil
 end
@@ -167,13 +163,28 @@ end
 If enabled, Resets AFK timer or unAFKs the player if they are AFK on mouse movement or a key being held down
 ]]
 
-local function resetAFKTimerOrUnAFKPlayerMouseMoveOrKeyHold(ply, cmd)
-	PrintTable(SmartAntiAFK.AntiAFKPlayers[ply:SteamID()].keysDown)
+local function resetAFKTimerOrUnAFKPlayerMouseMoveOrScrollOrKeyHold(ply, cmd)
+	local playerAFKTable = SmartAntiAFK.AntiAFKPlayers[ply:SteamID()]
+
 	if SmartAntiAFK.Config.AntiAFKDetectMouseMove and (cmd:GetMouseX() ~= 0 or cmd:GetMouseY() ~= 0) then
 		resetAFKTimerOrUnAFKPlayer(ply)
-	elseif SmartAntiAFK.Config.AntiAFKDetectKeyHold and not table.IsEmpty(SmartAntiAFK.AntiAFKPlayers[ply:SteamID()].keysDown) then
+	elseif SmartAntiAFK.Config.AntiAFKDetectKeyHold and playerAFKTable and playerAFKTable.keysDown and not table.IsEmpty(playerAFKTable.keysDown) then
+		resetAFKTimerOrUnAFKPlayer(ply)
+	elseif SmartAntiAFK.Config.AntiAFKDetectScrolling and cmd:GetMouseWheel() ~= 0 then
 		resetAFKTimerOrUnAFKPlayer(ply)
 	end
+end
+
+--[[
+Starts the AFK timer after a configurable amount of time
+]]
+
+local function startInitialAFKTimer(ply)
+	timer.Simple(SmartAntiAFK.Config.AntiAFKTimeOffset, function()
+		if not IsValid(ply) then return end
+
+		startAFKTimer(ply)
+	end)
 end
 
 --[[
@@ -192,18 +203,12 @@ local function cleanUpAntiAFK(ply)
 	SmartAntiAFK.AntiAFKPlayers[ply:SteamID()] = nil
 end
 
-if SmartAntiAFK.Config.AntiAFKDetectMouseMove or SmartAntiAFK.Config.AntiAFKDetectKeyHold then
-	hook.Add("StartCommand", "SmartAntiAFK_UnAFKOnMouseMove", resetAFKTimerOrUnAFKPlayerMouseMoveOrKeyHold) --If enabled, the player will be unAFK or have their AFK timer reset upon moving their mouse or when holding a key down
-end
+hook.Add("StartCommand", "SmartAntiAFK_UnAFKOnMouseMove", resetAFKTimerOrUnAFKPlayerMouseMoveOrScrollOrKeyHold) --If enabled, the player will be unAFK or have their AFK timer reset upon moving their mouse, scrolling, and/or when holding a key down
 
-if SmartAntiAFK.Config.AntiAFKDetectKeyDown then
-	hook.Add("PlayerButtonDown", "SmartAntiAFK_UnAFKOnKeyDown", resetAFKTimerOrUnAFKPlayerKeyDown) --If enabled, the player will be unAFK or have their AFK timer reset upon pressing a key down
-end
+hook.Add("PlayerButtonDown", "SmartAntiAFK_UnAFKOnKeyDown", resetAFKTimerOrUnAFKPlayerKeyDown) --If enabled, the player will be unAFK or have their AFK timer reset upon pressing a key down
 
 hook.Add("PlayerButtonUp", "SmartAntiAFK_UnAFKOnKeyUp", resetAFKTimerOrUnAFKPlayerKeyUp) --If enabled, the player will be unAFK or have their AFK timer reset upon lifting a key up
 
-hook.Add("PlayerInitialSpawn", "SmartAntiAFK_StartAFKTimer", startAFKTimer)
+hook.Add("PlayerInitialSpawn", "SmartAntiAFK_StartAFKTimer", startInitialAFKTimer) --Start the AFK timer after a configurable amount of time when the player joins
 
-hook.Add("PlayerDisconnected", "SmartAntiAFK_UnAFKOnDisconnect", cleanUpAntiAFK)
-
---make sure to check if value exists in table, if not, terminate the function
+hook.Add("PlayerDisconnected", "SmartAntiAFK_UnAFKOnDisconnect", cleanUpAntiAFK) --Get rid of any AFK timers and deregister player as AFK with the server if they are AFK when the player disconnects
