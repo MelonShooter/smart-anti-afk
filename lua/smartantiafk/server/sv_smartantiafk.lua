@@ -5,12 +5,17 @@ SmartAntiAFK.AntiAFKPlayers = SmartAntiAFK.AntiAFKPlayers or {}
 
 --[[
 TODO:
-add salary stop implementation
 use table to kick, ghost, and/or stop salary of player, god, if necessary (make sure it can parse both roles and usergroups)
 finish dev API (see freedcamp)
-see if there's another fix to the keyboard focus issue
 anti-macro (see freedcamp)
 look at freedcamp
+]]
+
+--[[
+BUGS:
+utime not pausing
+keyboard focus will not register keystrokes
+opening the console/menu will not register as a key
 ]]
 
 --[[
@@ -29,7 +34,7 @@ function plyMetatable:StartSmartAntiAFK()
 
 	SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time = CurTime() --Registers the user as AFK
 
-	if UTime and SmartAntiAFK.Config.Enable["UTime"].enable then
+	if _G["Utime"] and _G["Utime"]["updateAll"] and SmartAntiAFK.Config.Enable["UTime"].enable then
 		self:SetNWInt("SmartAntiAFK_CurrentUTimePause", CurTime()) --Sets NWInt which will pause UTime
 	end
 
@@ -65,7 +70,7 @@ function plyMetatable:EndSmartAntiAFK()
 
 	SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time = nil --Deregisters the user as AFK
 
-	if UTime and SmartAntiAFK.Config.Enable["UTime"].enable then
+	if _G["Utime"] and _G["Utime"]["updateAll"] and SmartAntiAFK.Config.Enable["UTime"].enable then
 		self:SetNWInt("SmartAntiAFK_TotalUTimePause", self:GetNWInt("SmartAntiAFK_TotalUTimePause") + CurTime() - self:GetNWInt("SmartAntiAFK_CurrentUTimePause")) --Adds current pause time to total offset for UTime
 		self:SetNWInt("SmartAntiAFK_CurrentUTimePause", 0) --Resets current pause time
 	end
@@ -86,7 +91,7 @@ Returns true if they are.
 Returns false if they are not.
 ]]
 
-function plyMetatable:IsSmartAntiAFK()
+function plyMetatable:IsSmartAFK()
 	local playerAFKTable = SmartAntiAFK.AntiAFKPlayers[self:SteamID()]
 	return playerAFKTable and isnumber(playerAFKTable.time)
 end
@@ -106,7 +111,7 @@ Resets AFK timer or unAFKs the player if they are AFK
 
 local function resetAFKTimerOrUnAFKPlayer(ply)
 	local timerIdentifier = "SmartAntiAFK_AntiAFK" .. ply:UserID()
-	if ply:IsSmartAntiAFK() then --If the player is AFK, make them unAFK
+	if ply:IsSmartAFK() then --If the player is AFK, make them unAFK
 		ply:EndSmartAntiAFK()
 	elseif timer.Exists(timerIdentifier) then --If they aren't AFK and the timer exists, reset their timer
 		timer.Adjust(timerIdentifier, SmartAntiAFK.Config.AntiAFKTimerTime, 1,  function()
@@ -194,7 +199,7 @@ Get rid of any AFK timers and deregister player as AFK with the server if they a
 local function cleanUpAntiAFK(ply)
 	if not IsValid(ply) then return end
 
-	if ply:IsSmartAntiAFK() then
+	if ply:IsSmartAFK() then
 		ply:EndSmartAntiAFK()
 	end
 

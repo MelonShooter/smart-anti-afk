@@ -1,10 +1,13 @@
 --make this into a config GUI
 --make config GUI write to flat file
 --then set variables into global table when updated
+--Change default language text to change based on language selected in config
 
 SmartAntiAFK = SmartAntiAFK or {}
 
 SmartAntiAFK.Config = SmartAntiAFK.Config or {}
+
+SmartAntiAFK.Config.Language = SmartAntiAFK.Config.Language or {}
 
 --Don't touch anything above this
 
@@ -29,8 +32,8 @@ SmartAntiAFK.Config.AntiAFKKeyHoldTimeOut = 5 --The amount of time before a held
 
 
 
-SmartAntiAFK.Config.AFKMessage = "Come back to us please. (AFK)"
-
+SmartAntiAFK.Config.Language.AFKMessage = "Come back to us please. (AFK)"
+SmartAntiAFK.Config.Language.SalaryPausedMessage = "You have received no salary because you are AFK."
 
 
 

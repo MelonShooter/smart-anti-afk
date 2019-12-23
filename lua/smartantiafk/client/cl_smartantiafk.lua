@@ -30,15 +30,15 @@ local function HSL(h, s, l)
 end
 
 local function AFKMenu()
-	if IsValid(SmartAntiAFK.AntiAFKPanel) and hook.GetTable()["HUDPaint"]["AntiAFKDrawAFK"] then
+	if IsValid(SmartAntiAFK.AntiAFKPanel) and hook.GetTable()["DrawOverlay"]["AntiAFKDrawAFK"] then
 		SmartAntiAFK.AntiAFKPanel:Remove()
-		hook.Remove("HUDPaint", "AntiAFKDrawAFK")
+		hook.Remove("DrawOverlay", "AntiAFKDrawAFK")
 		return
 	elseif IsValid(SmartAntiAFK.AntiAFKPanel) then
 		SmartAntiAFK.AntiAFKPanel:Remove()
 		return
-	elseif hook.GetTable()["HUDPaint"]["AntiAFKDrawAFK"] then
-		hook.Remove("HUDPaint", "AntiAFKDrawAFK")
+	elseif hook.GetTable()["DrawOverlay"]["AntiAFKDrawAFK"] then
+		hook.Remove("DrawOverlay", "AntiAFKDrawAFK")
 		return
 	end
 
@@ -50,20 +50,20 @@ local function AFKMenu()
 		SmartAntiAFK.AntiAFKButton = vgui.Create("DButton", SmartAntiAFK.AntiAFKPanel)
 		SmartAntiAFK.AntiAFKButton:SetSize(100, 100)
 		SmartAntiAFK.AntiAFKButton.DoClick = function()
-			SmartAntiAFK.AntiAFKPanel:Remove()
+			SmartAntiAFK.AntiAFKPanel:Remove() --If they click on the button, it will be detected on the server.
 		end
 
 		return
 	end
 
-	hook.Add("HUDPaint", "AntiAFKDrawAFK", function()
+	hook.Add("DrawOverlay", "AntiAFKDrawAFK", function()
 		surface.SetDrawColor(25, 25, 25, 253)
 		surface.DrawRect(ScrW() / 4, ScrH() * 3 / 8, ScrW() / 2, ScrH() / 4)
 		surface.SetTextColor(HSL(RealTime() * 100, 100, 100))
 		surface.SetFont("AntiAFKDrawFont")
-		local x, y = surface.GetTextSize("Come back to us please. (AFK)")
+		local x, y = surface.GetTextSize(SmartAntiAFK.Config.Language.AFKMessage)
 		surface.SetTextPos(ScrW() / 2 - x / 2, ScrH() / 2 - y / 2)
-		surface.DrawText("Come back to us please. (AFK)")
+		surface.DrawText(SmartAntiAFK.Config.Language.AFKMessage)
 	end)
 end
 

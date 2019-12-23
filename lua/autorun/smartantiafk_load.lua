@@ -10,5 +10,4 @@ include("smartantiafk/smartantiafk_utimeoverride.lua")
 
 if SERVER then
 	include("smartantiafk/server/sv_smartantiafk.lua")
-	include("smartantiafk/server/sv_smartantiafk_utimeoverride.lua")
 end
