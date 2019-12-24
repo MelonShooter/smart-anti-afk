@@ -6,9 +6,9 @@ SmartAntiAFK.AntiAFKPlayers = SmartAntiAFK.AntiAFKPlayers or {}
 --[[
 TODO:
 use table to kick, ghost, and/or stop salary of player, god, if necessary (make sure it can parse both roles and usergroups)
-finish dev API (see freedcamp)
 anti-macro (see freedcamp)
 look at freedcamp
+MAKE SURE TO MAKE IT SO THAT THEY DO A MAP RESTART FOR CONFIG CHANGES TO TAKE EFFECT
 ]]
 
 --[[
@@ -26,24 +26,39 @@ Notifies the client that they have been marked as AFK.
 ]]
 
 function plyMetatable:StartSmartAntiAFK()
-	if SmartAntiAFK.AntiAFKPlayers[self:SteamID()] and SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time then return end --Don't execute if they're already registered ask AFK
+	if SmartAntiAFK.AntiAFKPlayers[self:SteamID()] and SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time then return end --Don't execute if they're already registered as AFK
+
+	local supressAFK, timeExtension = hook.Run("OnSmartAFK", self)
+
+	if supressAFK then
+		timer.Create("SmartAntiAFK_AntiAFK" .. self:UserID(), timeExtension or 0, 1, function()
+			if not IsValid(self) then return end
+
+			self:StartSmartAntiAFK()
+		end)
+
+		return
+	end
 
 	if not SmartAntiAFK.AntiAFKPlayers[self:SteamID()] then
 		SmartAntiAFK.AntiAFKPlayers[self:SteamID()] = {}
 	end
 
 	SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time = CurTime() --Registers the user as AFK
+	self:SetNWInt("SmartAntiAFK_AFKTime", CurTime())
 
-	if _G["Utime"] and _G["Utime"]["updateAll"] and SmartAntiAFK.Config.Enable["UTime"].enable then
-		self:SetNWInt("SmartAntiAFK_CurrentUTimePause", CurTime()) --Sets NWInt which will pause UTime
+	if SmartAntiAFK.Config.GodPlayer.enable then
+		self:GodEnable()
 	end
 
-	if DarkRP and SmartAntiAFK.Config.Enable["DarkRP"].enable then
-		self.SmartAntiAFKSalaryStop = true
+	if _G["Utime"] and _G["Utime"]["updateAll"] and SmartAntiAFK.Config.UTimePause.enable then
+		self:SetNWInt("SmartAntiAFK_CurrentUTimePause", CurTime()) --Sets NWInt which will pause UTime
 	end
 
 	net.Start("SendAFKMessage")
 	net.Send(self) --Notifies player that they've been marked as AFK
+
+	hook.Run("OnPostSmartAFK", self)
 end
 
 --[[
@@ -69,40 +84,21 @@ function plyMetatable:EndSmartAntiAFK()
 	if not SmartAntiAFK.AntiAFKPlayers[self:SteamID()] or not SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time then return end --Don't execute if they haven't been registered ask AFK in the first place
 
 	SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time = nil --Deregisters the user as AFK
+	self:SetNWInt("SmartAntiAFK_AFKTime", 0)
 
-	if _G["Utime"] and _G["Utime"]["updateAll"] and SmartAntiAFK.Config.Enable["UTime"].enable then
-		self:SetNWInt("SmartAntiAFK_TotalUTimePause", self:GetNWInt("SmartAntiAFK_TotalUTimePause") + CurTime() - self:GetNWInt("SmartAntiAFK_CurrentUTimePause")) --Adds current pause time to total offset for UTime
-		self:SetNWInt("SmartAntiAFK_CurrentUTimePause", 0) --Resets current pause time
+	if SmartAntiAFK.Config.GodPlayer.enable then
+		self:GodDisable()
 	end
 
-	if DarkRP and SmartAntiAFK.Config.Enable["DarkRP"].enable then
-		self.SmartAntiAFKSalaryStop = nil
+	if _G["Utime"] and _G["Utime"]["updateAll"] and SmartAntiAFK.Config.UTimePause.enable then
+		self:SetNWInt("SmartAntiAFK_TotalUTimePause", self:GetNWInt("SmartAntiAFK_TotalUTimePause") + CurTime() - self:GetNWInt("SmartAntiAFK_CurrentUTimePause")) --Adds current pause time to total offset for UTime
+		self:SetNWInt("SmartAntiAFK_CurrentUTimePause", 0) --Resets current pause time
 	end
 
 	net.Start("SendAFKMessage")
 	net.Send(self) --Remove the notification to the player that they've been marked ask AFK
 
 	startAFKTimer(self) --Restart AFK timer
-end
-
---[[
-Detects if player is AFK.
-Returns true if they are.
-Returns false if they are not.
-]]
-
-function plyMetatable:IsSmartAFK()
-	local playerAFKTable = SmartAntiAFK.AntiAFKPlayers[self:SteamID()]
-	return playerAFKTable and isnumber(playerAFKTable.time)
-end
-
---[[
-Returns the amount of time a player has been AFK. 
-Returns 0 if they are not AFK
-]]
-
-function plyMetatable:AFKTime()
-	return SmartAntiAFK.AntiAFKPlayers[self:SteamID()] and CurTime() - SmartAntiAFK.AntiAFKPlayers[self:SteamID()].time or 0
 end
 
 --[[
