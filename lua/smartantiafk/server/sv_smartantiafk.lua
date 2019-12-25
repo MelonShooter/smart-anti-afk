@@ -19,7 +19,7 @@ opening the console/menu will not register as a key
 ]]
 
 if SmartAntiAFK.Config.KickPlayer.enable then
-	SmartAntiAFK.kickTable = SmartAntiAFK.kickTable or {}
+	SmartAntiAFK.KickTable = SmartAntiAFK.KickTable or {}
 	SmartAntiAFK.AntiAFKPlayers.players = SmartAntiAFK.AntiAFKPlayers.players or 0
 end
 
@@ -46,14 +46,14 @@ local function smartAFKKick(ply, immideatelyOrNo)
 		else
 			timer.Simple(kickConfig.kickDelay, function() --test the delay
 				if not IsValid(ply) then
-					while SmartAntiAFK.kickTable[1] and not IsValid(SmartAntiAFK.kickTable[1]) do
-						table.remove(SmartAntiAFK.kickTable, 1)
+					while SmartAntiAFK.KickTable[1] and not IsValid(SmartAntiAFK.KickTable[1]) do
+						table.remove(SmartAntiAFK.KickTable, 1)
 					end
 				end
 
-				if table.IsEmpty(SmartAntiAFK.kickTable) then return end
+				if table.IsEmpty(SmartAntiAFK.KickTable) then return end
 
-				ply:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
+				SmartAntiAFK.KickTable[1]:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
 			end)
 		end
 	else
@@ -110,14 +110,14 @@ function plyMetatable:StartSmartAntiAFK()
 				if SmartAntiAFK.Config.KickPlayer.kickAll then --Kick immediately if enabled
 					smartAFKKick(self, true)
 				else --Add to kick queue if they're not going to be kicked immediately. Make sure to check if AFK player still exists
-					table.insert(SmartAntiAFK.kickTable, self)
+					table.insert(SmartAntiAFK.KickTable, self)
 				end
 			end)
 		else
 			if SmartAntiAFK.Config.KickPlayer.kickAll then
 				smartAFKKick(self, true)
 			else --Add to kick queue if they're not going to be kicked immediately. Make sure to check if AFK player still exists
-				table.insert(SmartAntiAFK.kickTable, self)
+				table.insert(SmartAntiAFK.KickTable, self)
 			end
 		end
 	end
@@ -175,7 +175,7 @@ function plyMetatable:EndSmartAntiAFK()
 	end
 
 	if SmartAntiAFK.Config.KickPlayer.enable and (not SmartAntiAFK.Config.KickPlayer.botsExempt or not self:IsBot()) then
-		table.RemoveByValue(SmartAntiAFK.kickTable, self)
+		table.RemoveByValue(SmartAntiAFK.KickTable, self)
 	end
 
 	net.Start("SendAFKMessage")
@@ -296,15 +296,15 @@ local function kickAFKPlayersOnPlayerCount()
 
 	SmartAntiAFK.AntiAFKPlayers.players = SmartAntiAFK.AntiAFKPlayers.players + 1 --Need to get player count this way because there's no way to account for loading players otherwise
 
-	while SmartAntiAFK.kickTable[1] and not IsValid(SmartAntiAFK.kickTable[1]) do
-		table.remove(SmartAntiAFK.kickTable, 1)
+	while SmartAntiAFK.KickTable[1] and not IsValid(SmartAntiAFK.KickTable[1]) do
+		table.remove(SmartAntiAFK.KickTable, 1)
 	end
 
 
 
-	if table.IsEmpty(SmartAntiAFK.kickTable) then return end
+	if table.IsEmpty(SmartAntiAFK.KickTable) then return end
 
-	local toKick = SmartAntiAFK.kickTable[1]
+	local toKick = SmartAntiAFK.KickTable[1]
 
 	local kickConfig = SmartAntiAFK.Config.KickPlayer
 	local percentageOrNumber = kickConfig.kickIfPlayerCountPercentageOrNumberReached
@@ -315,11 +315,6 @@ local function kickAFKPlayersOnPlayerCount()
 		smartAFKKick(toKick)
 	end
 end
-
---local kickConfig = SmartAntiAFK.Config.KickPlayer print(kickConfig.kickIfPlayerCountPercentageOrNumberReached and SmartAntiAFK.AntiAFKPlayers.players >= kickConfig.kickPlayerCount / 100 * game.MaxPlayers())
---PrintTable(SmartAntiAFK.kickTable)
---kickConfig.kickIfPlayerCountPercentageOrNumberReached
---SmartAntiAFK.AntiAFKPlayers.players > kickConfig.kickPlayerCount / 100 * game.MaxPlayers()
 
 --[[
 Removes from player count
