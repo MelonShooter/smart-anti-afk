@@ -7,7 +7,7 @@ Returns false if they are not.
 ]]
 
 function plyMetatable:IsSmartAFK()
-	return self:GetNWInt("SmartAntiAFK_AFKTime") ~= 0
+	return self:GetNWFloat("SmartAntiAFK_AFKTime") ~= 0
 end
 
 --[[
@@ -16,5 +16,5 @@ Returns 0 if they are not AFK
 ]]
 
 function plyMetatable:AFKTime()
-	return self:GetNWInt("SmartAntiAFK_AFKTime") ~= 0 and CurTime() - self:GetNWInt("SmartAntiAFK_AFKTime") or 0
+	return self:GetNWFloat("SmartAntiAFK_AFKTime") ~= 0 and CurTime() - self:GetNWFloat("SmartAntiAFK_AFKTime") or 0
 end

@@ -45,7 +45,7 @@ local function AFKMenu()
 		return
 	end
 
-	if vgui.GetKeyboardFocus() or gui.IsGameUIVisible() or gui.IsConsoleVisible() then
+	if vgui.GetKeyboardFocus() or gui.IsGameUIVisible() or gui.IsConsoleVisible() then --If they're in a GUI with keyboard focus or main/escape menu
 		SmartAntiAFK.AntiAFKPanel = vgui.Create("DPanel") --the server can't detect the keys the client is pressing or mouse movements, only the mouse clicks, so this creates a manual popup.
 		SmartAntiAFK.AntiAFKPanel:SetSize(200, 200)
 		SmartAntiAFK.AntiAFKPanel:MakePopup()
@@ -59,7 +59,7 @@ local function AFKMenu()
 		hook.Run("OnPostSmartAFK")
 
 		return
-	end --If they're in a GUI with keyboard focus or main/escape menu
+	end
 
 	hook.Add("DrawOverlay", "AntiAFKDrawAFK", function()
 		surface.SetDrawColor(25, 25, 25, 253)
