@@ -1,6 +1,7 @@
 timer.Simple(0, function() --Load after UTime
+	if not Utime or not SmartAntiAFK.Config.UTimePause.enable then return end
+
 	local plyMetatable = FindMetaTable("Player")
-	if not SmartAntiAFK.Config.UTimePause.enable or not _G["Utime"] or not plyMetatable["GetUTimeSessionTime"] then return end
 
 	function plyMetatable:GetUTimeSessionTime()
 		local trueSessionTime = CurTime() - self:GetUTimeStart()

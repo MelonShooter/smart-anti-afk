@@ -30,20 +30,18 @@ local function HSL(h, s, l)
 end
 
 local function AFKMenu()
+	local drawAFK = net.ReadBool()
+
 	if IsValid(SmartAntiAFK.AntiAFKPanel) and hook.GetTable()["DrawOverlay"]["AntiAFKDrawAFK"] then
 		SmartAntiAFK.AntiAFKPanel:Remove()
 		hook.Remove("DrawOverlay", "AntiAFKDrawAFK")
-
-		return
 	elseif IsValid(SmartAntiAFK.AntiAFKPanel) then
 		SmartAntiAFK.AntiAFKPanel:Remove()
-
-		return
 	elseif hook.GetTable()["DrawOverlay"]["AntiAFKDrawAFK"] then
 		hook.Remove("DrawOverlay", "AntiAFKDrawAFK")
-
-		return
 	end
+
+	if not drawAFK then return end
 
 	if vgui.GetKeyboardFocus() or gui.IsGameUIVisible() or gui.IsConsoleVisible() then --If they're in a GUI with keyboard focus or main/escape menu
 		SmartAntiAFK.AntiAFKPanel = vgui.Create("DPanel") --the server can't detect the keys the client is pressing or mouse movements, only the mouse clicks, so this creates a manual popup.

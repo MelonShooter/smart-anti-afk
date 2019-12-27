@@ -1,71 +1,74 @@
-util.AddNetworkString("SendAFKMessage")
-
-local plyMetatable = FindMetaTable("Player")
-SmartAntiAFK.AntiAFKPlayers = SmartAntiAFK.AntiAFKPlayers or {}
 --[[
 TODO:
-analyze the delays in startafk and how it affects the checks for endafk, see if there will be a bug
-also analyze delay in smartAFKKick()
 make sure it can parse BOTH roles and usergroups
 anti-macro (see freedcamp)
 look at freedcamp
 make as many config changes as possible happen instantly
-MAKE SURE TO MAKE IT SO THAT THEY DO A MAP RESTART FOR CONFIG CHANGES TO TAKE EFFECT
 in the end, test all config values to see if they work (especially the delays in combination with other things, like enabling of modules)
+double check all features work on the server first loading (without autorefreshing) and if they work after autorefreshing
 ]]
 
 --[[
 BUGS:
 module config changes won't take effect until they go afk again (if they're currently afk, the effects don't happen yet, which means bots will be unaffected by any module config changes)
-keyboard focus will not register keystrokes
+keyboard focus will not register keystrokes (maybe use client to detect mouse positions to run an afk command or somehow take away focus for a second and give it back)
 opening the console/menu will not register as a key
 ]]
+
+--lua_run local i = 0 for k, v in pairs(_G) do if istable(v) and k == "_G" then for _, j in pairs(v) do file.Append("f.txt", "in " .. tostring(v) .. ": " .. tostring(_) .. " = " .. tostring(j) .. "\n") end end end
+
+util.AddNetworkString("SendAFKMessage")
+
+local plyMetatable = FindMetaTable("Player")
+
+local customTTTRoles = { --Table to see if player is one of these TTT roles and if they're blacklisted
+	["Traitor"] = plyMetatable.GetTraitor,
+	["Innocent"] = function(ply) return not ply:IsSpecial() end,
+	["Detective"] = plyMetatable.GetDetective,
+	["Spectator"] = plyMetatable.IsSpec
+}
+
+local customMurderRoles = { --Table to see if player is one of these Murder roles and if they're blacklisted
+	["Bystander"] = function(ply) return not ply.GetMurderer() and not ply.IsCSpectating() and not ply:HasWeapon("weapon_mu_magnum") end,
+	["Armed Bystander"] = function(ply) return not ply.GetMurderer() and not ply.IsCSpectating() and ply:HasWeapon("weapon_mu_magnum") end,
+	["Murderer"] = plyMetatable.GetMurderer,
+	["Spectator"] = plyMetatable.IsCSpectating
+}
+
+SmartAntiAFK.AntiAFKPlayers = SmartAntiAFK.AntiAFKPlayers or {}
 
 if SmartAntiAFK.Config.KickPlayer.enable then
 	SmartAntiAFK.KickTable = SmartAntiAFK.KickTable or {}
 	SmartAntiAFK.AntiAFKPlayers.players = SmartAntiAFK.AntiAFKPlayers.players or 0
 end
 
-local uTimeExists = _G["Utime"] and _G["Utime"]["updateAll"]
-
 --[[
-Kicks player and runs the OnSmartAFKKick hook
+Returns true if the player should have a certain module enabled based on the configurations and group/team. Returns false if not.
 ]]
 
-local function smartAFKKick(ply)
-	local abortKick, overwriteKickReason = hook.Run("OnSmartAFKKick", ply, CurTime() - SmartAntiAFK.AntiAFKPlayers[ply:SteamID64()].time)
-
-	if abortKick then return end
-
-	local kickConfig = SmartAntiAFK.Config.KickPlayer
-
-	if kickConfig.kickDelay > 0 then
-		if kickConfig.kickAll then --validate kick again here with the according config values
-			timer.Simple(kickConfig.kickDelay, function() --test the delay
-				if not IsValid(ply) then return end
-
-				ply:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
-			end)
-		else
-			timer.Simple(kickConfig.kickDelay, function() --test the delay
-				if not IsValid(ply) then
-					while SmartAntiAFK.KickTable[1] and not IsValid(SmartAntiAFK.KickTable[1]) do
-						table.remove(SmartAntiAFK.KickTable, 1)
-					end
-				end
-
-				if table.IsEmpty(SmartAntiAFK.KickTable) then return end
-
-				SmartAntiAFK.KickTable[1]:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
-			end)
-		end
-	else
-		ply:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
-	end
-end
-
 local function isModuleEnabled(ply, moduleTable)
-	if not CAMI or table.IsEmpty(moduleTable.blackList) then return true end --If there's no one in the blackList or no CAMI-supported admin mod is present, everyone is allowed
+	local isEmpty = table.IsEmpty
+	local areBlacklistsEmpty = isEmpty(moduleTable.blackList) and isEmpty(moduleTable.blackListTeams) and isEmpty(moduleTable.blackListTTTRoles) and isEmpty(moduleTable.blackListMurderRoles)
+
+	if areBlacklistsEmpty then return true end --If there's no one in the blackList, everyone is allowed
+
+	local activeGamemode = GAMEMODE.Name
+
+	if activeGamemode == "Trouble in Terrorist Town" then
+		for _, role in pairs(moduleTable.blackListTTTRoles) do
+			if customTTTRoles[role] and customTTTRoles[role](ply) then --If a given TTT role is blacklisted and the player is of that role, disable the module for them
+				return false
+			end
+		end
+	elseif activeGamemode == "Murder" then
+		for _, role in pairs(moduleTable.blackListMurderRoles) do
+			if customMurderRoles[role] and customMurderRoles[role](ply) then --If a given DarkRP role is blacklisted and the player is of that role, disable the module for them
+				return false
+			end
+		end
+	end
+
+	if not CAMI then return true end --no CAMI-supported admin mod is present, everyone is allowed past this point
 
 	if moduleTable.observeInheritance then --Take inheritance into account
 		for group in pairs(moduleTable.blackList) do
@@ -73,10 +76,51 @@ local function isModuleEnabled(ply, moduleTable)
 				return not CAMI.UsergroupInherits(ply:GetUserGroup(), group)
 			end
 		end
-
-		return true --If the player's group doesn't inherit from any of the groups in the list, then the module should be enabled
 	else --Don't take inheritance into account
 		return not moduleTable.blackList[ply:GetUserGroup()]
+	end
+
+	return true --Enable the module for them if nothing has stopped them
+end
+
+--[[
+Kicks player and runs the OnSmartAFKKick hook
+]]
+
+local function smartAFKKick(ply)
+	local abortKick, overwriteKickReason = hook.Run("OnSmartAFKKick", ply, CurTime() - SmartAntiAFK.AntiAFKPlayers[ply:SteamID64()].time)
+	local kickConfig = SmartAntiAFK.Config.KickPlayer
+	local passBotCheck = not kickConfig.botsExempt or not ply:IsBot()
+
+	if abortKick then return end
+
+	if kickConfig.kickDelay > 0 then
+		if kickConfig.kickAll then --validate kick again here with the according config values
+			timer.Simple(kickConfig.kickDelay, function()
+				if not IsValid(ply) or not kickConfig.enable or not isModuleEnabled(ply, kickConfig) or not ply:IsSmartAFK() or not passBotCheck then return end --Recheck config values here
+
+				if not kickConfig.kickAll then --If the config value has been changed, add them to the kick table
+					ply.WillBeSmartAFKKicked = true
+					table.insert(SmartAntiAFK.KickTable, ply)
+				end
+
+				ply:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
+			end)
+		else
+			timer.Simple(kickConfig.kickDelay, function()
+				if not IsValid(ply) then
+					while SmartAntiAFK.KickTable[1] and not IsValid(SmartAntiAFK.KickTable[1]) do
+						table.remove(SmartAntiAFK.KickTable, 1)
+					end
+				end
+
+				if table.IsEmpty(SmartAntiAFK.KickTable) or not kickConfig.enable or not isModuleEnabled(ply, kickConfig) or not ply:IsSmartAFK() or not passBotCheck then return end
+
+				SmartAntiAFK.KickTable[1]:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
+			end)
+		end
+	else
+		ply:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
 	end
 end
 
@@ -95,7 +139,6 @@ end
 --[[
 Registers player as AFK with the server only if they weren't AFK to begin with.
 If UTime is used and the config allows it, it will pause UTime for the player. 
-If DarkRP is used and the config allows it, it will pause salaries for the player
 Notifies the client that they have been marked as AFK.
 ]]
 
@@ -167,7 +210,7 @@ function plyMetatable:StartSmartAntiAFK()
 		end
 	end
 
-	if uTimeExists and config.UTimePause.enable and isModuleEnabled(self, config.UTimePause) then
+	if Utime and config.UTimePause.enable and isModuleEnabled(self, config.UTimePause) then
 		if config.UTimePause.time > 0 then --If enabled, UTime will pause for the player after a configurable amount of seconds after going AFK
 			timer.Simple(config.UTimePause.time, function()
 				if not IsValid(self) or not config.UTimePause.enable or not isModuleEnabled(self, config.UTimePause) or not self:IsSmartAFK() then return end --Verify
@@ -180,6 +223,7 @@ function plyMetatable:StartSmartAntiAFK()
 	end
 
 	net.Start("SendAFKMessage")
+	net.WriteBool(true)
 	net.Send(self) --Notifies player that they've been marked as AFK
 
 	hook.Run("OnPostSmartAFK", self)
@@ -188,7 +232,6 @@ end
 --[[
 Deregisters player as AFK with the server only if they were AFK to begin with.
 If UTime is used and the config allows it, it will unpause UTime for the player. 
-If DarkRP is used and the config allows it, it will unpause salaries for the player.
 Gets rid of the notification on the client
 ]]
 
@@ -205,7 +248,7 @@ function plyMetatable:EndSmartAntiAFK()
 		self:GodDisable()
 	end
 
-	if uTimeExists and self:GetNWFloat("SmartAntiAFK_CurrentUTimePause") > 0 then
+	if Utime and self:GetNWFloat("SmartAntiAFK_CurrentUTimePause") > 0 then
 		local newTotalTime = self:GetNWFloat("SmartAntiAFK_TotalUTimePause") + CurTime() - self:GetNWFloat("SmartAntiAFK_CurrentUTimePause")
 
 		self:SetNWFloat("SmartAntiAFK_TotalUTimePause", newTotalTime) --Adds current pause time to total offset for UTime
@@ -214,10 +257,11 @@ function plyMetatable:EndSmartAntiAFK()
 
 	if self.WillBeSmartAFKKicked then
 		table.RemoveByValue(SmartAntiAFK.KickTable, self)
-		self.WillBeSmartAFKKicked = false
+		self.WillBeSmartAFKKicked = nil
 	end
 
 	net.Start("SendAFKMessage")
+	net.WriteBool(false)
 	net.Send(self) --Remove the notification to the player that they've been marked ask AFK
 
 	startAFKTimer(self) --Restart AFK timer
@@ -387,5 +431,3 @@ hook.Add("player_connect", "SmartAntiAFK_SmartAntiAFKKickDetection", kickAFKPlay
 gameevent.Listen("player_disconnect") --This is called even when the player hasn't loaded in yet
 
 hook.Add("player_disconnect", "SmartAntiAFK_SmartAntiAFKKickDisconnect", subtractPlayerCount)
-
---player.GetCount() changes directly after the player is authed and spawned
