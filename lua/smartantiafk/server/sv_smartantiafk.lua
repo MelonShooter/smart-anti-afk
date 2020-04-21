@@ -29,20 +29,23 @@ if SmartAntiAFK.Config.KickPlayer.enable then
 	SmartAntiAFK.AntiAFKPlayers.players = SmartAntiAFK.AntiAFKPlayers.players or 0
 end
 
-timer.Simple(0, function() --Make the customRoles table load after the gamemode has loaded
+hook.Add("PostGamemodeLoaded", "SmartAntiAFK_PostGamemodeLoading", function()
+	local TTT = ents.TTT
+	local Murder = TeamSpawns
+	local PropHunt = UTIL_SpawnAllPlayers
+
 	customRoles = { --Table to see if player is one of these TTT or Murder roles and if they're blacklisted
-		["Trouble in Terrorist Town"] = {
-			["Traitor"] = function(ply) return ply:GetTraitor() and not ply:IsSpec() end,
-			["Innocent"] = function(ply) return not ply:IsSpecial() and not ply:IsSpec() end,
-			["Detective"] = function(ply) return ply:GetDetective() and not ply:IsSpec() end,
-			["Spectator"] = plyMetatable.IsSpec
-		},
-		["Murder"] = {
-			["Bystander"] = function(ply) return not ply:GetMurderer() and not ply:IsCSpectating() and not ply:HasWeapon("weapon_mu_magnum") end,
-			["Armed Bystander"] = function(ply) return not ply:GetMurderer() and not ply:IsCSpectating() and ply:HasWeapon("weapon_mu_magnum") end,
-			["Murderer"] = plyMetatable.GetMurderer,
-			["Spectator"] = plyMetatable.IsCSpectating
-		}
+		["traitor"] = function(ply) return TTT and ply:GetTraitor() and not ply:IsSpec() end,
+		["innocent"] = function(ply) return TTT and not ply:IsSpecial() and not ply:IsSpec() end,
+		["detective"] = function(ply) return TTT and ply:GetDetective() and not ply:IsSpec() end,
+		["ttt spectator"] = function(ply) return TTT and ply:IsSpec() end,
+		["bystander"] = function(ply) return Murder and not ply:GetMurderer() and not ply:IsCSpectating() and not ply:HasWeapon("weapon_mu_magnum") end,
+		["armed bystander"] = function(ply) return Murder and not ply:GetMurderer() and not ply:IsCSpectating() and ply:HasWeapon("weapon_mu_magnum") end,
+		["murderer"] = function(ply) return Murder and ply:GetMurderer() end,
+		["murder spectator"] = function(ply) return Murder and ply:IsCSpectating() end,
+		["prop"] = function(ply) return PropHunt and ply:Team() == TEAM_PROPS end,
+		["hunter"] = function(ply) return PropHunt and ply:Team() == TEAM_HUNTERS end,
+		["prop hunt spectator"] = function(ply) return PropHunt and ply:IsObserver() end
 	}
 end)
 
@@ -50,50 +53,30 @@ end)
 Returns true if the player should have a certain module enabled based on the configurations and group/team. Returns false if not.
 ]]
 
-function SmartAntiAFK.isModuleEnabled(ply, moduleTable)
-	local areBlacklistsEmpty = table.IsEmpty(moduleTable.blackListGroups) and table.IsEmpty(moduleTable.blackListRoles)
-
-	if areBlacklistsEmpty then return true end --If there's no one in the blackList, everyone is allowed
-
-	local activeGamemode = GAMEMODE.Name
+function SmartAntiAFK.IsModuleEnabled(ply, moduleTable)
 	local blackListRoles = moduleTable.blackListRoles
+	local blackListGroups = moduleTable.blackListGroups
 
-	if customRoles[activeGamemode] and blackListRoles[activeGamemode] then --Check if either Murder or TTT are the active gamemode and if there are any configured blacklisted roles
-		for _, blacklistedRoles in ipairs(blackListRoles[activeGamemode]) do
-			if not customRoles[activeGamemode][blacklistedRoles](ply) then continue end
+	if not table.IsEmpty(blackListRoles) then
+		for _, role in ipairs(blackListRoles) do
+			role = string.lower(role)
 
-			return false --Disable the module for the user if they are a blacklisted TTT or Murder role
-		end
-	elseif RPExtraTeams and blackListRoles[activeGamemode] and DarkRP.getJobByCommand then --Check if DarkRP or derived gamemode is active and if there are any blacklisted jobs
-		for _, jobCommand in ipairs(blackListRoles[activeGamemode]) do
-			local _, jobIndex = DarkRP.getJobByCommand(jobCommand)
-
-			if ply:Team() ~= jobIndex then continue end
-
-			return false --Disable the module for the user if they are a blacklisted job.
-		end
-	elseif blackListRoles[activeGamemode] then --If the gamemode is in the blacklistRoles table, check if there are any remaining blacklisted teams
-		for _, teamInfo in ipairs(blackListRoles[activeGamemode]) do
-			local beginningPos, endPos = string.find(teamInfo, "^%d*")
-			local teamIndex = string.sub(teamInfo, beginningPos, endPos)
-			local teamName = string.sub(teamInfo, endPos + 2)
-
-			if tostring(ply:Team()) ~= teamIndex or team.GetName(ply:Team()) ~= teamName then continue end
-
-			return false --Disable the module for the user if they are a blacklisted job.
+			if customRoles[role] and customRoles[role](ply) or not customRoles[role] and isnumber(role) and ply:Team() == role then --Is the player a certain TTT, Murder, or Prop Hunt role or team enum
+				return false
+			end
 		end
 	end
 
-	if not CAMI then return true end --no CAMI-supported admin mod is present, everyone is allowed past this point
+	if not CAMI or table.IsEmpty(blackListGroups) then return true end --no CAMI-supported admin mod is present or no one in blackListGroup table, module allowed past this point
 
 	if moduleTable.observeInheritance then --Take inheritance into account
-		for group in pairs(moduleTable.blackListGroups) do
+		for group in pairs(blackListGroups) do
 			if CAMI.UsergroupInherits(ply:GetUserGroup(), group) then
-				return not CAMI.UsergroupInherits(ply:GetUserGroup(), group)
+				return not CAMI.UsergroupInherits(ply:GetUserGroup(), group) --Disable module for user if they are in a usergroup that inherits.
 			end
 		end
 	else --Don't take inheritance into account
-		return not moduleTable.blackListGroups[ply:GetUserGroup()]
+		return not blackListGroups[ply:GetUserGroup()] --Disable module for user if they are in a usergroup stated
 	end
 
 	return true --Enable the module for them if nothing has stopped them
@@ -113,7 +96,7 @@ local function smartAFKKick(ply)
 	if kickConfig.kickDelay > 0 then
 		if kickConfig.kickAll then --validate kick again here with the according config values
 			timer.Simple(kickConfig.kickDelay, function()
-				if not IsValid(ply) or not kickConfig.enable or not SmartAntiAFK.isModuleEnabled(ply, kickConfig) or not ply:IsSmartAFK() or not passBotCheck then return end --Recheck config values here
+				if not IsValid(ply) or not kickConfig.enable or not SmartAntiAFK.IsModuleEnabled(ply, kickConfig) or not ply:IsSmartAFK() or not passBotCheck then return end --Recheck config values here
 
 				if not kickConfig.kickAll then --If the config value has been changed, add them to the kick table
 					ply.WillBeSmartAFKKicked = true
@@ -130,7 +113,7 @@ local function smartAFKKick(ply)
 					end
 				end
 
-				if table.IsEmpty(SmartAntiAFK.KickTable) or not kickConfig.enable or not SmartAntiAFK.isModuleEnabled(ply, kickConfig) or not ply:IsSmartAFK() or not passBotCheck then return end
+				if table.IsEmpty(SmartAntiAFK.KickTable) or not kickConfig.enable or not SmartAntiAFK.IsModuleEnabled(ply, kickConfig) or not ply:IsSmartAFK() or not passBotCheck then return end
 
 				SmartAntiAFK.KickTable[1]:Kick(overwriteKickReason or SmartAntiAFK.Config.Language.KickReason)
 			end)
@@ -164,7 +147,7 @@ function plyMetatable:StartSmartAntiAFK()
 
 	if playerAFKTable and playerAFKTable.time then return end --Don't execute if they're already registered as AFK
 
-	if not SmartAntiAFK.isModuleEnabled(self, config) then --Restart timer (for autorefresh) and don't execute if they are blacklisted
+	if not SmartAntiAFK.IsModuleEnabled(self, config) then --Restart timer (for autorefresh) and don't execute if they are blacklisted
 		startAFKTimer(self)
 		return
 	end
@@ -190,10 +173,10 @@ function plyMetatable:StartSmartAntiAFK()
 	SmartAntiAFK.AntiAFKPlayers[self:SteamID64()].time = CurTime() --Registers the user as AFK
 	self:SetNWFloat("SmartAntiAFK_AFKTime", CurTime())
 
-	if config.GodPlayer.enable and SmartAntiAFK.isModuleEnabled(self, config.GodPlayer) then
+	if config.GodPlayer.enable and SmartAntiAFK.IsModuleEnabled(self, config.GodPlayer) then
 		if config.GodPlayer.time > 0 then --If enabled, player will be godded after a configurable amount of seconds after going AFK
 			timer.Simple(config.GodPlayer.time, function()
-				if not IsValid(self) or not config.GodPlayer.enable or not SmartAntiAFK.isModuleEnabled(self, config.GodPlayer) or not self:IsSmartAFK() then return end --Verify this should happen
+				if not IsValid(self) or not config.GodPlayer.enable or not SmartAntiAFK.IsModuleEnabled(self, config.GodPlayer) or not self:IsSmartAFK() then return end --Verify this should happen
 
 				self.SmartAntiAFKGodded = true
 				self:GodEnable()
@@ -204,10 +187,10 @@ function plyMetatable:StartSmartAntiAFK()
 		end
 	end
 
-	if config.KickPlayer.enable and SmartAntiAFK.isModuleEnabled(self, config.KickPlayer) and passBotCheck then
+	if config.KickPlayer.enable and SmartAntiAFK.IsModuleEnabled(self, config.KickPlayer) and passBotCheck then
 		if config.KickPlayer.time > 0 then --If enabled, player will be kicked after a configurable amount of seconds and/or when certain player count is reached after going AFK
 			timer.Simple(config.KickPlayer.time, function()
-				if not IsValid(self) or not config.KickPlayer.enable or not SmartAntiAFK.isModuleEnabled(self, config.KickPlayer) or not self:IsSmartAFK() or not passBotCheck then return end --Verify
+				if not IsValid(self) or not config.KickPlayer.enable or not SmartAntiAFK.IsModuleEnabled(self, config.KickPlayer) or not self:IsSmartAFK() or not passBotCheck then return end --Verify
 
 				if config.KickPlayer.kickAll then --Kick immediately if enabled
 					smartAFKKick(self)
@@ -226,10 +209,10 @@ function plyMetatable:StartSmartAntiAFK()
 		end
 	end
 
-	if Utime and config.UTimePause.enable and SmartAntiAFK.isModuleEnabled(self, config.UTimePause) then
+	if Utime and config.UTimePause.enable and SmartAntiAFK.IsModuleEnabled(self, config.UTimePause) then
 		if config.UTimePause.time > 0 then --If enabled, UTime will pause for the player after a configurable amount of seconds after going AFK
 			timer.Simple(config.UTimePause.time, function()
-				if not IsValid(self) or not config.UTimePause.enable or not SmartAntiAFK.isModuleEnabled(self, config.UTimePause) or not self:IsSmartAFK() then return end --Verify
+				if not IsValid(self) or not config.UTimePause.enable or not SmartAntiAFK.IsModuleEnabled(self, config.UTimePause) or not self:IsSmartAFK() then return end --Verify
 
 				self:SetNWFloat("SmartAntiAFK_CurrentUTimePause", CurTime()) --Sets NWFloat which will pause UTime
 			end)
